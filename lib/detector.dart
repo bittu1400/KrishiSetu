@@ -3,13 +3,19 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 
-import 'fifth.dart'; // Import your main dashboard
-import 'chat.dart'; // Import chat page
+import 'fifth.dart';
+import 'chat.dart';
 
 // CAMERA CAPTURE PAGE
 class CropDiagnosisCamera extends StatefulWidget {
-  const CropDiagnosisCamera({Key? key}) : super(key: key);
+  final Map<String, dynamic>? userData; // Add userData
+
+  const CropDiagnosisCamera({
+    Key? key,
+    this.userData,
+  }) : super(key: key);
 
   @override
   State<CropDiagnosisCamera> createState() => _CropDiagnosisCameraState();
@@ -65,13 +71,24 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('http://127.0.0.1:8000/diagnose'), // Replace with your backend URL
+        Uri.parse('http://127.0.0.1:8000/diagnose'),
       );
+
+      String fileName = _selectedImage!.path.split('/').last;
+      String contentType = 'image/jpeg';
+      
+      if (fileName.toLowerCase().endsWith('.png')) {
+        contentType = 'image/png';
+      } else if (fileName.toLowerCase().endsWith('.jpg') || 
+                fileName.toLowerCase().endsWith('.jpeg')) {
+        contentType = 'image/jpeg';
+      }
 
       request.files.add(
         await http.MultipartFile.fromPath(
           'file',
           _selectedImage!.path,
+          contentType: MediaType.parse(contentType),
         ),
       );
 
@@ -88,14 +105,18 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
               builder: (_) => CropDiagnosisResults(
                 diagnosisData: diagnosisData,
                 capturedImagePath: _selectedImage!.path,
+                userData: widget.userData, // Pass userData
               ),
             ),
           );
         }
       } else {
+        final responseBody = await response.stream.bytesToString();
+        print('Error response: $responseBody');
         _showErrorDialog('Failed to diagnose crop. Please try again.');
       }
     } catch (e) {
+      print('Exception: $e');
       _showErrorDialog('Error sending image: $e');
     } finally {
       if (mounted) {
@@ -120,15 +141,21 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
     );
   }
 
+  void _navigateBackToDashboard() {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CropDashboard(userData: widget.userData ?? {}),
+      ),
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const CropDashboard()),
-          (route) => false,
-        );
+        _navigateBackToDashboard();
         return false;
       },
       child: Scaffold(
@@ -138,11 +165,7 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const CropDashboard()),
-              (route) => false,
-            ),
+            onPressed: _navigateBackToDashboard,
           ),
         ),
         body: Container(
@@ -179,7 +202,6 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
                     ),
                   ),
                   const SizedBox(height: 40),
-                  // Image Preview or Placeholder
                   Container(
                     height: 300,
                     decoration: BoxDecoration(
@@ -221,7 +243,6 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
                           ),
                   ),
                   const SizedBox(height: 40),
-                  // Camera and Gallery Buttons
                   Row(
                     children: [
                       Expanded(
@@ -258,7 +279,6 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
                     ],
                   ),
                   const SizedBox(height: 24),
-                  // Diagnose Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
@@ -306,22 +326,30 @@ class _CropDiagnosisCameraState extends State<CropDiagnosisCamera> {
 class CropDiagnosisResults extends StatelessWidget {
   final Map<String, dynamic> diagnosisData;
   final String capturedImagePath;
+  final Map<String, dynamic>? userData; // Add userData
 
   const CropDiagnosisResults({
     Key? key,
     required this.diagnosisData,
     required this.capturedImagePath,
+    this.userData,
   }) : super(key: key);
+
+  void _navigateBackToDashboard(BuildContext context) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CropDashboard(userData: userData ?? {}),
+      ),
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const CropDashboard()),
-          (route) => false,
-        );
+        _navigateBackToDashboard(context);
         return false;
       },
       child: Scaffold(
@@ -331,11 +359,7 @@ class CropDiagnosisResults extends StatelessWidget {
           elevation: 0,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back),
-            onPressed: () => Navigator.pushAndRemoveUntil(
-              context,
-              MaterialPageRoute(builder: (_) => const CropDashboard()),
-              (route) => false,
-            ),
+            onPressed: () => _navigateBackToDashboard(context),
           ),
         ),
         body: Container(
@@ -353,7 +377,6 @@ class CropDiagnosisResults extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Captured Image
                   Container(
                     height: 250,
                     decoration: BoxDecoration(
@@ -375,16 +398,13 @@ class CropDiagnosisResults extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  // Diagnosis Results Card
                   _buildResultCard(
                     title: 'Disease Detection',
                     data: diagnosisData,
                   ),
                   const SizedBox(height: 20),
-                  // Recommendations Card
                   _buildRecommendationsCard(diagnosisData),
                   const SizedBox(height: 20),
-                  // Chat with Expert Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton.icon(
@@ -406,15 +426,10 @@ class CropDiagnosisResults extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  // Back to Home Button
                   SizedBox(
                     width: double.infinity,
                     child: OutlinedButton.icon(
-                      onPressed: () => Navigator.pushAndRemoveUntil(
-                        context,
-                        MaterialPageRoute(builder: (_) => const CropDashboard()),
-                        (route) => false,
-                      ),
+                      onPressed: () => _navigateBackToDashboard(context),
                       icon: const Icon(Icons.home),
                       label: const Text('Back to Home'),
                       style: OutlinedButton.styleFrom(
@@ -528,7 +543,7 @@ class CropDiagnosisResults extends StatelessWidget {
   }
 
   Widget _buildRecommendationsCard(Map<String, dynamic> data) {
-    final recommendations = data['recommendations'] ?? 'No recommendations available';
+    final recommendations = data['recommendation'] ?? data['recommendations'] ?? 'No recommendations available';
 
     return Container(
       decoration: BoxDecoration(
