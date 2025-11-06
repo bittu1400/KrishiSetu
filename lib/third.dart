@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
-import 'fourth.dart';
-import 'second.dart';
+import 'fifth.dart'; // User dashboard
+import 'expert_dashboard.dart'; // Expert dashboard
+import 'second.dart'; // Create account screen
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -13,79 +14,90 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _identifierController = TextEditingController();
-  final _pinController = TextEditingController();
-  bool _obscurePin = true;
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  bool _obscurePassword = true;
   bool _isLoading = false;
+  String _loginType = 'User'; // 'User' or 'Expert'
   final String _baseUrl = 'http://127.0.0.1:8000';
 
   @override
   void dispose() {
-    _identifierController.dispose();
-    _pinController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _loginAndSendOTP() async {
+  Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
-        // Step 1: Verify credentials with backend
-        final loginResponse = await http.post(
-          Uri.parse('$_baseUrl/login'),
+        // Determine endpoint based on login type
+        final endpoint = _loginType == 'User' ? '/login' : '/expert/login';
+        
+        final response = await http.post(
+          Uri.parse('$_baseUrl$endpoint'),
           headers: {'Content-Type': 'application/json'},
           body: jsonEncode({
-            'identifier': _identifierController.text.trim(),
-            'password': _pinController.text,
+            'identifier': _emailController.text.trim(),
+            'password': _passwordController.text,
           }),
         );
 
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
 
-        if (loginResponse.statusCode == 200) {
-          final userData = jsonDecode(loginResponse.body)['user'];
+        if (response.statusCode == 200) {
+          final data = jsonDecode(response.body);
           
-          print('✅ Login successful: ${userData['name']}');
-          
-          // Step 2: Navigate to OTP screen with user data
-          if (mounted) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => OTPVerificationScreen(
-                  phoneNumber: userData['phone'],
-                  isSignUp: false,
-                  userData: {
-                    'name': userData['name'],
-                    'email': userData['email'],
-                    'phone': userData['phone'],
-                    'city': userData['city'],
-                  },
+          if (_loginType == 'User') {
+            // User login successful
+            final userData = data['user'];
+            print('✅ User login successful: ${userData['name']}');
+            
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CropDashboard(
+                    userData: {
+                      'name': userData['name'],
+                      'email': userData['email'],
+                      'phone': userData['phone'],
+                      'city': userData['city'],
+                    },
+                  ),
                 ),
-              ),
-            );
+              );
+            }
+          } else {
+            // Expert login successful
+            final expertData = data['expert'];
+            print('✅ Expert login successful: ${expertData['name']}');
+            
+            if (mounted) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ExpertDashboardScreen(expertData: expertData),
+                ),
+              );
+            }
           }
         } else {
           // Handle login failure
-          final error = jsonDecode(loginResponse.body)['detail'] ?? 'Invalid credentials';
+          final error = jsonDecode(response.body)['detail'] ?? 'Invalid credentials';
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(error),
+                content: Text('❌ $error'),
                 backgroundColor: Colors.red,
               ),
             );
           }
         }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -100,18 +112,22 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _forgotPin() {
-    print('Forgot PIN clicked');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Password reset link sent!')),
-    );
-  }
-
   void _navigateToCreateAccount() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const CreateAccountScreen()),
-    );
+    if (_loginType == 'Expert') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const ExpertRegistrationScreen(),
+        ),
+      );
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => const CreateAccountScreen(),
+        ),
+      );
+    }
   }
 
   @override
@@ -161,7 +177,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 
-                const SizedBox(height: 80),
+                const SizedBox(height: 60),
                 
                 const Center(
                   child: Icon(
@@ -196,7 +212,26 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 
-                const SizedBox(height: 50),
+                const SizedBox(height: 40),
+                
+                // Login Type Selector
+                Center(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(25),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildLoginTypeButton('User', Icons.person),
+                        _buildLoginTypeButton('Expert', Icons.verified_user),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 30),
                 
                 const Text(
                   'Email or Phone Number',
@@ -208,10 +243,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: _identifierController,
+                  controller: _emailController,
                   keyboardType: TextInputType.text,
                   decoration: InputDecoration(
-                    hintText: 'example@email.com or +977-XXXXXXXXXX',
+                    hintText: 'your@email.com or +977-9800000000',
                     hintStyle: TextStyle(color: Colors.grey.shade600),
                     filled: true,
                     fillColor: Colors.grey.shade300,
@@ -220,6 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: const Icon(Icons.person_outline),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
@@ -232,7 +268,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 20),
                 
                 const Text(
-                  'PIN',
+                  'Password',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
@@ -241,11 +277,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 8),
                 TextFormField(
-                  controller: _pinController,
-                  obscureText: _obscurePin,
-                  keyboardType: TextInputType.number,
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
                   decoration: InputDecoration(
-                    hintText: 'Enter your PIN',
+                    hintText: 'Enter your password',
                     hintStyle: TextStyle(color: Colors.grey.shade600),
                     filled: true,
                     fillColor: Colors.grey.shade300,
@@ -254,32 +289,31 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderSide: BorderSide.none,
                     ),
                     contentPadding: const EdgeInsets.all(16),
+                    prefixIcon: const Icon(Icons.lock_outlined),
                     suffixIcon: IconButton(
                       icon: Icon(
-                        _obscurePin ? Icons.visibility_off : Icons.visibility,
+                        _obscurePassword ? Icons.visibility_off : Icons.visibility,
                         color: Colors.grey.shade600,
                       ),
                       onPressed: () {
-                        setState(() {
-                          _obscurePin = !_obscurePin;
-                        });
+                        setState(() => _obscurePassword = !_obscurePassword);
                       },
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Please enter your PIN';
+                      return 'Please enter your password';
                     }
                     return null;
                   },
                 ),
                 
-                const SizedBox(height: 50),
+                const SizedBox(height: 40),
                 
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _isLoading ? null : _loginAndSendOTP,
+                    onPressed: _isLoading ? null : _login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF4CAF50),
                       foregroundColor: Colors.white,
@@ -298,9 +332,9 @@ class _LoginScreenState extends State<LoginScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
+                        : Text(
+                            'Login as $_loginType',
+                            style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w600,
                             ),
@@ -312,28 +346,14 @@ class _LoginScreenState extends State<LoginScreen> {
                 
                 Center(
                   child: TextButton(
-                    onPressed: _forgotPin,
-                    child: const Text(
-                      'Forget PIN?',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Colors.black87,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 10),
-                
-                Center(
-                  child: TextButton(
                     onPressed: _navigateToCreateAccount,
-                    child: const Text(
-                      'New to KrishiSetu? Create Account',
-                      style: TextStyle(
+                    child: Text(
+                      _loginType == 'Expert' 
+                          ? 'New Expert? Register Here'
+                          : 'New to KrishiSetu? Create Account',
+                      style: const TextStyle(
                         fontSize: 16,
-                        color: Colors.black87,
+                        color: Color(0xFF2E7D32),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -344,6 +364,41 @@ class _LoginScreenState extends State<LoginScreen> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginTypeButton(String type, IconData icon) {
+    final isSelected = _loginType == type;
+    return GestureDetector(
+      onTap: () {
+        setState(() => _loginType = type);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF4CAF50) : Colors.transparent,
+          borderRadius: BorderRadius.circular(25),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? Colors.white : Colors.grey.shade600,
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              type,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey.shade600,
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ],
         ),
       ),
     );

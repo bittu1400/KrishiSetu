@@ -55,7 +55,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
               'city': _cityController.text.trim(),
               'email': _emailController.text.trim(),
               'phone': _phoneController.text.trim(),
-              'pin': _pinController.text,  // ✅ PIN included
+              'password': _pinController.text,  // ✅ PIN included
             },
           ),
         ),
