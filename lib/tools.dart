@@ -47,7 +47,7 @@ class _ToolsPageState extends State<ToolsPage> {
                         crossAxisCount: 2,
                         crossAxisSpacing: 16,
                         mainAxisSpacing: 16,
-                        childAspectRatio: 1.1,
+                        childAspectRatio: 0.85,
                         children: [
                           _buildToolCard(
                             context,

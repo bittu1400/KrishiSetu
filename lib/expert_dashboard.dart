@@ -618,7 +618,7 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
       appBar: AppBar(
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
-        title: Text('Dr. ${_expertData['name'].split(' ')[0]}'),
+        title: Text(_expertData['name']),
         elevation: 0,
         actions: [
           IconButton(
