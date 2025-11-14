@@ -438,3 +438,18 @@ class ChatMessage {
     this.isError = false,
   });
 }
+
+
+// This Flutter chat page works by letting the user type a message,
+//  sending that message to a FastAPI backend, and then displaying the bot’s 
+//  response in a chat-like interface. When the user enters text and presses send, 
+//  the message is added to the chat UI and an HTTP POST request is made to the
+//   backend with the message and selected language. The backend processes the 
+//   text (for example, via a RAG chatbot) and returns a JSON response, which 
+//   is then shown as a bot message. The widget manages state for messages, 
+//   scrolling, loading indicators, and language switching. Messages are displayed
+//    differently depending on whether they are from the user or the bot 
+//    (including error messages and optional source text), and the interface 
+//    automatically scrolls to the bottom as new messages arrive. 
+//    The entire chat experience is wrapped in a clean UI with gradient
+//     backgrounds, language buttons, and smooth message bubbles.
