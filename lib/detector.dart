@@ -8,7 +8,7 @@ import 'package:http_parser/http_parser.dart';
 import 'fifth.dart';
 import 'chat.dart';
 
-// CAMERA CAPTURE PAGE
+// CAMERA CAPTURE PAGE BY SHUBHAM YADAV
 class CropDiagnosisCamera extends StatefulWidget {
   final Map<String, dynamic>? userData;
 
