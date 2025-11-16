@@ -1,3 +1,6 @@
+# Explicitly set the C++ compiler to g++
+set(CMAKE_CXX_COMPILER "g++")
+
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.13)
 project(runner LANGUAGES CXX)

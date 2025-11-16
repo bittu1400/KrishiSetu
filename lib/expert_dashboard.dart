@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'main.dart'; // Import main.dart for WelcomeScreen
+import 'third.dart'; // Import third.dart for LoginScreen
 
 // ============================================================================
 // EXPERT REGISTRATION SCREEN - Simplified with essential fields only
@@ -77,9 +79,10 @@ class _ExpertRegistrationScreenState extends State<ExpertRegistrationScreen> {
               ),
             );
 
+            // Navigate to main.dart WelcomeScreen
             Navigator.pushReplacement(
               context,
-              MaterialPageRoute(builder: (_) => const ExpertLoginScreen()),
+              MaterialPageRoute(builder: (_) => WelcomeScreen()),
             );
           }
         } else {
@@ -219,9 +222,10 @@ class _ExpertRegistrationScreenState extends State<ExpertRegistrationScreen> {
                 Center(
                   child: TextButton(
                     onPressed: () {
+                      // Navigate to LoginScreen for registration -> login flow
                       Navigator.pushReplacement(
                         context,
-                        MaterialPageRoute(builder: (_) => const ExpertLoginScreen()),
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
                       );
                     },
                     child: const Text('Already registered? Login'),
@@ -283,208 +287,6 @@ class _ExpertRegistrationScreenState extends State<ExpertRegistrationScreen> {
           },
         ),
       ],
-    );
-  }
-}
-
-// ============================================================================
-// EXPERT LOGIN SCREEN
-// ============================================================================
-class ExpertLoginScreen extends StatefulWidget {
-  const ExpertLoginScreen({Key? key}) : super(key: key);
-
-  @override
-  State<ExpertLoginScreen> createState() => _ExpertLoginScreenState();
-}
-
-class _ExpertLoginScreenState extends State<ExpertLoginScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
-  bool _isLoading = false;
-  final String _baseUrl = 'http://127.0.0.1:8000';
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loginExpert() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isLoading = true);
-
-      try {
-        final response = await http.post(
-          Uri.parse('$_baseUrl/expert/login'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({
-            'identifier': _emailController.text.trim(),
-            'password': _passwordController.text,
-          }),
-        );
-
-        setState(() => _isLoading = false);
-
-        if (response.statusCode == 200) {
-          final data = jsonDecode(response.body);
-          
-          if (mounted) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ExpertDashboardScreen(expertData: data['expert']),
-              ),
-            );
-          }
-        } else {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('❌ Invalid email or password'),
-                backgroundColor: Colors.red,
-              ),
-            );
-          }
-        }
-      } catch (e) {
-        setState(() => _isLoading = false);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-          );
-        }
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 60),
-                const Icon(
-                  Icons.verified_user,
-                  size: 100,
-                  color: Color(0xFF2E7D32),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Expert Login',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2E7D32),
-                  ),
-                ),
-                const SizedBox(height: 40),
-                
-                TextFormField(
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'Email',
-                    hintText: 'your@email.com',
-                    prefixIcon: const Icon(Icons.email),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || !value.contains('@')) {
-                      return 'Enter valid email';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-                
-                TextFormField(
-                  controller: _passwordController,
-                  obscureText: _obscurePassword,
-                  decoration: InputDecoration(
-                    labelText: 'Password',
-                    hintText: 'Enter password',
-                    prefixIcon: const Icon(Icons.lock),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    suffixIcon: IconButton(
-                      icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                      onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-                    ),
-                  ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Enter password';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 32),
-                
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _loginExpert,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2E7D32),
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              color: Colors.white,
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Text(
-                            'Login',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white,
-                            ),
-                          ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                
-                TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const ExpertRegistrationScreen(),
-                      ),
-                    );
-                  },
-                  child: const Text('New expert? Register here'),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -624,9 +426,10 @@ class _ExpertDashboardScreenState extends State<ExpertDashboardScreen> {
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () {
+              // Navigate to main.dart WelcomeScreen and clear navigation stack
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => const ExpertLoginScreen()),
+                MaterialPageRoute(builder: (_) => WelcomeScreen()),
                 (route) => false,
               );
             },
