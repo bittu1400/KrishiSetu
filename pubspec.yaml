@@ -1,7 +1,5 @@
-name: my_app
-description: "A new Flutter project."
-publish_to: 'none'
-
+name: krishisetu
+description: "An app made to help out farmers with thir agricultural needs."
 version: 1.0.0+1
 
 environment:
